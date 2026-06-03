@@ -1,291 +1,317 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
 from datetime import datetime
 from PIL import Image
 
-# -------------------
+# ---------------------------------
 # PAGE CONFIG
-# -------------------
+# ---------------------------------
 st.set_page_config(
     page_title="Smart House Price Analyzer",
     page_icon="🏠",
     layout="wide"
 )
 
-# -------------------
+# ---------------------------------
+# CUSTOM CSS
+# ---------------------------------
+st.markdown("""
+<style>
+div[data-testid="metric-container"]{
+    background-color:#ffffff;
+    border:1px solid #dddddd;
+    padding:15px;
+    border-radius:12px;
+}
+.stButton>button{
+    width:100%;
+    border-radius:10px;
+    height:3em;
+    font-weight:bold;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
 # LOAD DATASET
-# -------------------
+# ---------------------------------
 df = pd.read_csv("dataset.csv")
 
-# -------------------
-# MODEL
-# -------------------
-X = df[['SquareFeet', 'Bedrooms', 'Bathrooms']]
-y = df['Price']
+# ---------------------------------
+# FEATURES & TARGET
+# ---------------------------------
+X = df[
+    [
+        "SquareFeet",
+        "Bedrooms",
+        "Bathrooms",
+        "Parking",
+        "RoadType",
+        "CommunityType"
+    ]
+]
 
+y = df["Price"]
+
+# ---------------------------------
+# TRAIN MODEL
+# ---------------------------------
 model = LinearRegression()
 model.fit(X, y)
 
 y_pred = model.predict(X)
-score = r2_score(y, y_pred)
 
-# -------------------
-# SIDEBAR
-# -------------------
-st.sidebar.title("🏠 Smart House Analyzer")
-st.sidebar.write("Enter house details")
+r2 = r2_score(y, y_pred)
+mse = mean_squared_error(y, y_pred)
 
-# -------------------
+# ---------------------------------
 # TITLE
-# -------------------
-st.markdown(
-    "<h1 style='text-align:center;color:green;'>🏠 Smart House Price Analyzer</h1>",
-    unsafe_allow_html=True
-)
+# ---------------------------------
+st.title("🏠 Smart House Price Analyzer")
+st.write("Machine Learning Based House Price Prediction Dashboard")
 
-# -------------------
+# ---------------------------------
 # IMAGE
-# -------------------
+# ---------------------------------
 try:
     image = Image.open("house.jpg")
     st.image(image, use_container_width=True)
 except:
     pass
 
-# -------------------
-# INPUTS
-# -------------------
-col1, col2, col3 = st.columns(3)
+# ---------------------------------
+# TOP METRICS
+# ---------------------------------
+c1, c2, c3 = st.columns(3)
 
-with col1:
-    sqft = st.number_input(
-        "Square Feet",
-        min_value=500,
-        max_value=10000,
-        value=1500
+with c1:
+    st.metric(
+        "Total Properties",
+        len(df)
     )
 
-with col2:
-    bedrooms = st.number_input(
-        "Bedrooms",
-        min_value=1,
-        max_value=10,
-        value=3
+with c2:
+    st.metric(
+        "Average Price",
+        f"₹{int(df['Price'].mean()):,}"
     )
 
-with col3:
-    bathrooms = st.number_input(
-        "Bathrooms",
-        min_value=1,
-        max_value=10,
-        value=2
+with c3:
+    st.metric(
+        "Model Accuracy",
+        f"{r2*100:.2f}%"
     )
 
-# -------------------
-# SESSION HISTORY
-# -------------------
+# ---------------------------------
+# SIDEBAR
+# ---------------------------------
+st.sidebar.header("Property Details")
+
+sqft = st.sidebar.slider(
+    "Square Feet",
+    500,
+    5000,
+    1500
+)
+
+bed = st.sidebar.slider(
+    "Bedrooms",
+    1,
+    10,
+    3
+)
+
+bath = st.sidebar.slider(
+    "Bathrooms",
+    1,
+    10,
+    2
+)
+
+parking = st.sidebar.slider(
+    "Parking Slots",
+    0,
+    5,
+    1
+)
+
+road = st.sidebar.selectbox(
+    "Road Type",
+    ["Off Road", "Main Road"]
+)
+
+community = st.sidebar.selectbox(
+    "Property Type",
+    ["Apartment", "Gated Community"]
+)
+
+road_value = 1 if road == "Main Road" else 0
+community_value = 1 if community == "Gated Community" else 0
+
+# ---------------------------------
+# HISTORY
+# ---------------------------------
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# -------------------
-# PREDICT
-# -------------------
-if st.button("Predict Price"):
+# ---------------------------------
+# PREDICTION
+# ---------------------------------
+if st.sidebar.button("Predict House Price"):
 
-    prediction = model.predict(
-        [[sqft, bedrooms, bathrooms]]
-    )
+    prediction = model.predict([[
+        sqft,
+        bed,
+        bath,
+        parking,
+        road_value,
+        community_value
+    ]])
 
     st.success(
-        f"Predicted House Price: ₹{prediction[0]:,.2f}"
+        f"🏡 Estimated House Price: ₹ {prediction[0]:,.2f}"
     )
 
-    st.metric(
-        "Model Accuracy (R² Score)",
-        f"{score*100:.2f}%"
-    )
-
-    # Save history
-    st.session_state.history.append({
-        "SquareFeet": sqft,
-        "Bedrooms": bedrooms,
-        "Bathrooms": bathrooms,
-        "Predicted Price": round(prediction[0], 2),
-        "Date": datetime.now()
-    })
-
-    # Download Report
     report = pd.DataFrame({
-        "SquareFeet":[sqft],
-        "Bedrooms":[bedrooms],
-        "Bathrooms":[bathrooms],
-        "Predicted Price":[prediction[0]],
-        "Date":[datetime.now()]
+        "SquareFeet": [sqft],
+        "Bedrooms": [bed],
+        "Bathrooms": [bath],
+        "Parking": [parking],
+        "RoadType": [road],
+        "CommunityType": [community],
+        "PredictedPrice": [prediction[0]],
+        "Date": [datetime.now()]
     })
 
     st.download_button(
-        "📥 Download Report",
+        "📥 Download Prediction Report",
         report.to_csv(index=False),
-        file_name="prediction_report.csv",
-        mime="text/csv"
+        "prediction_report.csv",
+        "text/csv"
     )
 
-    # -------------------
-    # PREDICTION GRAPH
-    # -------------------
-    st.subheader("📈 Prediction Graph")
+    st.session_state.history.append({
+        "SquareFeet": sqft,
+        "Bedrooms": bed,
+        "Bathrooms": bath,
+        "Parking": parking,
+        "RoadType": road,
+        "CommunityType": community,
+        "PredictedPrice": round(prediction[0], 2)
+    })
 
-    fig, ax = plt.subplots(figsize=(8,5))
+# ---------------------------------
+# TABS
+# ---------------------------------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📈 Analytics",
+    "🔥 Heatmap",
+    "📊 Dataset",
+    "📋 History"
+])
+
+# ---------------------------------
+# ANALYTICS TAB
+# ---------------------------------
+with tab1:
+
+    st.subheader("Area vs House Price")
+
+    fig, ax = plt.subplots()
 
     ax.scatter(
         df["SquareFeet"],
-        df["Price"],
-        color="blue",
-        label="Actual Prices"
-    )
-
-    line = model.predict(X)
-
-    ax.plot(
-        df["SquareFeet"],
-        line,
-        color="red",
-        label="Regression Line"
-    )
-
-    ax.scatter(
-        sqft,
-        prediction[0],
-        color="green",
-        s=200,
-        marker="X",
-        label="Prediction"
+        df["Price"]
     )
 
     ax.set_xlabel("Square Feet")
     ax.set_ylabel("Price")
-    ax.legend()
 
     st.pyplot(fig)
 
-# -------------------
-# HISTORY
-# -------------------
-if st.session_state.history:
+    st.subheader("Price Distribution")
 
-    st.subheader("📋 Prediction History")
+    fig, ax = plt.subplots()
 
-    history_df = pd.DataFrame(
-        st.session_state.history
+    ax.hist(
+        df["Price"],
+        bins=5
     )
 
-    st.dataframe(history_df)
+    st.pyplot(fig)
 
-# -------------------
-# DATASET
-# -------------------
-st.subheader("📊 Dataset")
+    st.subheader("Bedrooms Impact")
 
-st.dataframe(df)
+    fig, ax = plt.subplots()
 
-# -------------------
-# DISTRIBUTION
-# -------------------
-st.subheader("📉 House Price Distribution")
+    ax.bar(
+        df["Bedrooms"],
+        df["Price"]
+    )
 
-fig, ax = plt.subplots(figsize=(8,5))
+    ax.set_xlabel("Bedrooms")
+    ax.set_ylabel("Price")
 
-sns.histplot(
-    df["Price"],
-    kde=True,
-    ax=ax
-)
+    st.pyplot(fig)
 
-st.pyplot(fig)
+# ---------------------------------
+# HEATMAP TAB
+# ---------------------------------
+with tab2:
 
-# -------------------
-# AREA VS PRICE
-# -------------------
-st.subheader("🏠 Area vs Price")
+    st.subheader("Feature Correlation Heatmap")
 
-fig, ax = plt.subplots(figsize=(8,5))
+    fig, ax = plt.subplots(figsize=(8, 5))
 
-sns.scatterplot(
-    x="SquareFeet",
-    y="Price",
-    data=df,
-    s=100,
-    ax=ax
-)
+    sns.heatmap(
+        df.corr(numeric_only=True),
+        annot=True,
+        cmap="Blues",
+        ax=ax
+    )
 
-st.pyplot(fig)
+    st.pyplot(fig)
 
-# -------------------
-# BEDROOMS VS PRICE
-# -------------------
-st.subheader("🛏 Bedrooms vs Price")
+# ---------------------------------
+# DATASET TAB
+# ---------------------------------
+with tab3:
 
-fig, ax = plt.subplots(figsize=(8,5))
+    st.subheader("Dataset Preview")
 
-sns.barplot(
-    x="Bedrooms",
-    y="Price",
-    data=df,
-    ax=ax
-)
+    st.dataframe(
+        df,
+        use_container_width=True
+    )
 
-st.pyplot(fig)
+    st.subheader("Dataset Statistics")
 
-# -------------------
-# HEATMAP
-# -------------------
-st.subheader("🔥 Correlation Heatmap")
+    st.write(
+        df.describe()
+    )
 
-fig, ax = plt.subplots(figsize=(8,5))
+# ---------------------------------
+# HISTORY TAB
+# ---------------------------------
+with tab4:
 
-sns.heatmap(
-    df.corr(),
-    annot=True,
-    cmap="YlGnBu",
-    ax=ax
-)
+    st.subheader("Prediction History")
 
-st.pyplot(fig)
+    if len(st.session_state.history) > 0:
 
-# -------------------
-# FOOTER
-# -------------------
-st.markdown("---")
+        history_df = pd.DataFrame(
+            st.session_state.history
+        )
 
-st.markdown(
-"""
-### 🛠 Tech Stack
+        st.dataframe(
+            history_df,
+            use_container_width=True
+        )
 
-- Python
-- Pandas
-- NumPy
-- Matplotlib
-- Seaborn
-- Scikit-Learn
-- Streamlit
-
-### Features
-
-✔ House Price Prediction  
-✔ Linear Regression Model  
-✔ R² Score Evaluation  
-✔ Prediction History  
-✔ CSV Report Download  
-✔ Distribution Analysis  
-✔ Area vs Price Analysis  
-✔ Bedrooms Impact Analysis  
-✔ Correlation Heatmap  
-✔ Interactive Dashboard
-"""
-)
+    else:
+        st.info("No predictions made yet.")
