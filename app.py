@@ -46,7 +46,7 @@ if page == "Dashboard":
 
     try:
         image = Image.open("house.jpg")
-        st.image(image, use_container_width=True)
+        st.image(image, width=400)
     except:
         pass
 
