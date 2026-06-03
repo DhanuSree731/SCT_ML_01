@@ -2,22 +2,38 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
 from PIL import Image
 
+# --------------------------------------------------
 # PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
     page_title="Smart House Price Analyzer",
     page_icon="🏠",
     layout="wide"
 )
 
+# --------------------------------------------------
 # LOAD DATA
+# --------------------------------------------------
 df = pd.read_csv("dataset.csv")
 
-# MODEL
-X = df[['SquareFeet', 'Bedrooms', 'Bathrooms', 'Parking', 'LocationRating']]
+# --------------------------------------------------
+# MODEL TRAINING
+# --------------------------------------------------
+X = df[[
+    'SquareFeet',
+    'Bedrooms',
+    'Bathrooms',
+    'Parking',
+    'LocationRating',
+    'FurnishingType',
+    'PropertyAge'
+]]
+
 y = df['Price']
 
 model = LinearRegression()
@@ -28,56 +44,91 @@ pred = model.predict(X)
 accuracy = r2_score(y, pred)
 mse = mean_squared_error(y, pred)
 
+# --------------------------------------------------
 # SIDEBAR
+# --------------------------------------------------
 st.sidebar.title("🏠 Navigation")
 
 page = st.sidebar.radio(
     "Select Page",
-    ["Dashboard", "Prediction", "Analytics"]
+    [
+        "Dashboard",
+        "Prediction",
+        "Analytics"
+    ]
 )
 
-# ==========================
+# ==================================================
 # DASHBOARD
-# ==========================
+# ==================================================
 if page == "Dashboard":
 
     st.title("🏠 Smart House Price Analyzer")
-    st.markdown("### Machine Learning Based House Price Prediction Dashboard")
+    st.markdown(
+        "### Machine Learning Based House Price Prediction Dashboard"
+    )
 
     try:
         image = Image.open("house.jpg")
-        st.image(image, width=400)
+
+        c1, c2, c3 = st.columns([1, 2, 1])
+
+        with c2:
+            st.image(image, width=450)
+
     except:
         pass
 
+    st.markdown("---")
+
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric("Total Properties", len(df))
-    col2.metric("Average Price", f"₹ {int(df['Price'].mean()):,}")
-    col3.metric("Maximum Price", f"₹ {int(df['Price'].max()):,}")
-    col4.metric("Model Accuracy", f"{accuracy*100:.2f}%")
+    col1.metric(
+        "Total Properties",
+        len(df)
+    )
+
+    col2.metric(
+        "Average Price",
+        f"₹ {int(df['Price'].mean()):,}"
+    )
+
+    col3.metric(
+        "Maximum Price",
+        f"₹ {int(df['Price'].max()):,}"
+    )
+
+    col4.metric(
+        "Model Accuracy",
+        f"{accuracy*100:.2f}%"
+    )
 
     st.markdown("---")
 
     left, right = st.columns(2)
 
     with left:
+
         st.subheader("📋 Project Overview")
 
         st.info("""
         Smart House Price Analyzer predicts
-        house prices using Linear Regression.
+        property prices using Linear Regression.
 
         Features Used:
+
         • Square Feet
         • Bedrooms
         • Bathrooms
         • Parking
         • Location Rating
+        • Furnishing Type
+        • Property Age
         """)
 
     with right:
-        st.subheader("🛠 Tech Stack")
+
+        st.subheader("🛠 Technology Stack")
 
         st.success("""
         • Python
@@ -88,9 +139,9 @@ if page == "Dashboard":
         • Streamlit
         """)
 
-# ==========================
-# PREDICTION
-# ==========================
+# ==================================================
+# PREDICTION PAGE
+# ==================================================
 elif page == "Prediction":
 
     st.title("🏡 House Price Prediction")
@@ -98,21 +149,68 @@ elif page == "Prediction":
     col1, col2 = st.columns(2)
 
     with col1:
-        sqft = st.slider("Square Feet", 500, 10000, 1500)
-        bedrooms = st.slider("Bedrooms", 1, 10, 3)
-        bathrooms = st.slider("Bathrooms", 1, 10, 2)
+
+        sqft = st.slider(
+            "Square Feet",
+            500,
+            10000,
+            1500
+        )
+
+        bedrooms = st.slider(
+            "Bedrooms",
+            1,
+            10,
+            3
+        )
+
+        bathrooms = st.slider(
+            "Bathrooms",
+            1,
+            10,
+            2
+        )
+
+        parking = st.slider(
+            "Parking Slots",
+            0,
+            5,
+            1
+        )
 
     with col2:
-        parking = st.slider("Parking Slots", 0, 5, 1)
 
         road = st.selectbox(
             "Road Type",
-            ["Off Road", "Road Side"]
+            [
+                "Off Road",
+                "Road Side"
+            ]
         )
 
         property_type = st.selectbox(
             "Property Type",
-            ["Apartment", "Gated Community", "Villa"]
+            [
+                "Apartment",
+                "Gated Community",
+                "Villa"
+            ]
+        )
+
+        furnishing = st.selectbox(
+            "Furnishing Type",
+            [
+                "Unfurnished",
+                "Semi Furnished",
+                "Fully Furnished"
+            ]
+        )
+
+        property_age = st.slider(
+            "Property Age (Years)",
+            0,
+            30,
+            5
         )
 
     road_score = 8 if road == "Road Side" else 5
@@ -121,6 +219,12 @@ elif page == "Prediction":
         "Apartment": 6,
         "Gated Community": 8,
         "Villa": 10
+    }
+
+    furnishing_score = {
+        "Unfurnished": 0,
+        "Semi Furnished": 1,
+        "Fully Furnished": 2
     }
 
     location_rating = (
@@ -135,7 +239,9 @@ elif page == "Prediction":
             bedrooms,
             bathrooms,
             parking,
-            location_rating
+            location_rating,
+            furnishing_score[furnishing],
+            property_age
         ]])
 
         st.success(
@@ -144,8 +250,17 @@ elif page == "Prediction":
 
         m1, m2 = st.columns(2)
 
-        m1.metric("R² Score", round(accuracy, 4))
-        m2.metric("Mean Squared Error", round(mse, 2))
+        m1.metric(
+            "R² Score",
+            round(accuracy, 4)
+        )
+
+        m2.metric(
+            "Mean Squared Error",
+            round(mse, 2)
+        )
+
+        st.subheader("📋 Prediction Summary")
 
         summary = pd.DataFrame({
             "Feature": [
@@ -153,18 +268,21 @@ elif page == "Prediction":
                 "Bedrooms",
                 "Bathrooms",
                 "Parking",
-                "Location Rating"
+                "Location Rating",
+                "Furnishing Type",
+                "Property Age"
             ],
             "Value": [
                 sqft,
                 bedrooms,
                 bathrooms,
                 parking,
-                location_rating
+                round(location_rating, 2),
+                furnishing,
+                property_age
             ]
         })
 
-        st.subheader("📋 Prediction Summary")
         st.dataframe(summary)
 
         report = pd.DataFrame({
@@ -173,6 +291,8 @@ elif page == "Prediction":
             "Bathrooms": [bathrooms],
             "Parking": [parking],
             "LocationRating": [location_rating],
+            "FurnishingType": [furnishing],
+            "PropertyAge": [property_age],
             "PredictedPrice": [round(result[0], 2)]
         })
 
@@ -216,9 +336,9 @@ elif page == "Prediction":
 
         st.pyplot(fig)
 
-# ==========================
-# ANALYTICS
-# ==========================
+# ==================================================
+# ANALYTICS PAGE
+# ==================================================
 else:
 
     st.title("📊 Analytics Dashboard")
@@ -231,10 +351,7 @@ else:
     ])
 
     with tab1:
-        st.subheader("Dataset")
         st.dataframe(df)
-
-        st.subheader("Dataset Statistics")
         st.write(df.describe())
 
     with tab2:
@@ -262,6 +379,7 @@ else:
         st.pyplot(fig)
 
 st.markdown("---")
+
 st.caption(
     "Developed by Dhanu Sree | SkillCraft Technology ML Internship"
 )
