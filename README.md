@@ -1,24 +1,26 @@
-# House Price Prediction
+# Smart House Price Analyzer
 
-Machine Learning project developed using Python, Scikit-Learn and Streamlit.
+Machine Learning Internship Task-1
 
 ## Features
+
 - House Price Prediction
 - Linear Regression Model
-- Prediction Accuracy
+- Dataset Visualization
+- Price Distribution Analysis
+- Area vs Price Graph
+- Bedrooms Impact Analysis
+- Correlation Heatmap
+- Model Accuracy Evaluation
 - Prediction History
-- Data Visualization
-- Download Prediction Report
+- CSV Report Download
 
-## Technologies Used
+## Tech Stack
+
 - Python
 - Pandas
-- Scikit-Learn
+- NumPy
 - Matplotlib
+- Seaborn
+- Scikit-Learn
 - Streamlit
-
-## Run Locally
-
-pip install -r requirements.txt
-
-streamlit run app.py
